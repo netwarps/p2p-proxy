@@ -121,7 +121,7 @@ func (e *endpoint) connHandler(conn net.Conn) {
 		if err != nil {
 			conn.Close()
 			stream.Reset()
-			log.Error("Copy stream => conn: ", err)
+			log.Warn("Copy stream => conn: ", err)
 			return
 		}
 	}()
@@ -131,7 +131,7 @@ func (e *endpoint) connHandler(conn net.Conn) {
 		if err != nil {
 			conn.Close()
 			stream.Reset()
-			log.Error("Copy conn => stream: ", err)
+			log.Warn("Copy conn => stream: ", err)
 			return
 		}
 	}()
