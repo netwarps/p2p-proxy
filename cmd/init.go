@@ -26,8 +26,7 @@ import (
 // initCmd represents the init command
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "generate and write default config",
-	Long: "generate and write default config",
+	Short: "Generate and write default config",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// parent command PersistentPreRunE hook ensure configFile exist
 		return initConfig("")

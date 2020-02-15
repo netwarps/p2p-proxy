@@ -49,8 +49,7 @@ func newCommand(ctx context.Context) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "p2p-proxy",
-		Short: "A p2p based http(s) proxy",
-		Long:  `A p2p based http(s) proxy`,
+		Short: "A http(s) proxy based on P2P",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			lvl, err := logging.LevelFromString(logLevel)
 			if err != nil {

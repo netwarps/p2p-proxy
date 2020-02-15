@@ -19,7 +19,7 @@
 远端为实际代理服务器，帮助信息如下：
 ```
 ./p2p-proxy proxy -h
-start a proxy server peer
+Start a proxy server peer
 
 Usage:
   p2p-proxy proxy [flags]
@@ -29,6 +29,7 @@ Flags:
 
 Global Flags:
   -c, --config string      config file (default is $HOME/.p2p-proxy.yaml)
+      --log-level string   set logging level (default "INFO")
       --p2p-addr strings   peer listen addr(s)
 ```
 启动示例：
@@ -44,7 +45,7 @@ libp2p-peer addresses:
 本地端为代理服务的入口，目前只支持代理`http(s)`，命令帮助如下：
 ```
 # ./p2p-proxy -h
-A p2p based http(s) proxy
+A http(s) proxy based on P2P
 
 Usage:
   p2p-proxy [flags]
@@ -52,15 +53,18 @@ Usage:
 
 Available Commands:
   help        Help about any command
-  init        generate and write default config
-  proxy       start a proxy server peer
+  init        Generate and write default config
+  proxy       Start a proxy server peer
 
 Flags:
   -c, --config string      config file (default is $HOME/.p2p-proxy.yaml)
   -h, --help               help for p2p-proxy
       --http string        local http(s) proxy agent listen address
+      --log-level string   set logging level (default "INFO")
       --p2p-addr strings   peer listen addr(s)
   -p, --proxy string       proxy server address
+
+Use "p2p-proxy [command] --help" for more information about a command.
 ```
 启动实例：
 ```shell script
@@ -81,6 +85,10 @@ identity:
 p2p:
   addr:
   - /ip4/0.0.0.0/tcp/8888
+# 带宽统计
+  bandwidthreporter:
+    enable: true
+    period: 20s
 # 本地端配置
 endpoint:
 # http(s) 代理 本地监听地址端口
