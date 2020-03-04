@@ -78,30 +78,57 @@ proxy listening on  127.0.0.1:8010
 
 配置文件说明：
 ```yaml
-# p2p 节点id
-identity:
-  privkey: CAASqQ .... /OsP53EAmA==
-# p2p 监听地址信息
-p2p:
-  addr:
-  - /ip4/0.0.0.0/tcp/8888
-# 带宽统计
-  bandwidthreporter:
-    enable: true
-    period: 20s
+# 配置版本
+Version: v0.0.2
+# 配置日志级别
+LogLevel: 
+  all: info
+  p2p-proxy: debug
+# 在dht网络暴露/查找服务的标签
+ServiceTag: p2p-proxy/0.0.1
+# p2p 网络配置
+P2P:
+  Identity:
+    # 私钥
+    PrivKey: CAASpe...k15GFrqg==
+    # 外部观察到的地址激活阈值，0表示使用libp2p默认（4），即有4个外表节点确认同一外部访问地址则讲该地址添加到本节点地址列表
+    ObservedAddrActivationThresh: 0
+# 本节点监听地址
+  Addrs:
+  - /ip4/0.0.0.0/tcp/8010
+# boot 节点
+  BootstrapPeers:
+  - /ip4/127.0.0.1/tcp/8888/ipfs/Qm...MW
+  - /dns4/proxy.server.com/tcp/8888/ipfs/QmW...yMW
+# 带宽流浪统计
+  BandWidthReporter:
+    Enable: false
+    Interval: 0s
+# 启用自动中继
+  EnableAutoRelay: false
+# 启用NAT 服务端
+  AutoNATService: false
+# DHT 配置
+  DHT:
+    Client: false
+# 代理服务设置
+Proxy:
+  # 支持的协议列表
+  Protocols:
+  - Protocol: /p2p-proxy/http/0.0.1
+    Config: {}
+  ServiceAdvertiseInterval: 1h0m0s
 # 本地端配置
-endpoint:
-# http(s) 代理 本地监听地址端口
-  http: 127.0.0.1:8010
-# 远端代理服务器地址
-  proxy: "/ip4/127.0.0.1/tcp/8888/ipfs/QmXktjtfrwwjPYowB9DV7qdViLnjAKHbYgGA4oSjuwYAAY"
-# 代理服务器配置
-proxy:
-  auth:
-#   基本认证
-    basic:
-      realm: my_realm
-      users:
-#       用户名密码对
-        foo: bar
+Endpoint:
+  # 本地端支持（监听）的协议，由远端提供支持
+  ProxyProtocols:
+  - Protocol: /p2p-proxy/http/0.0.1
+    # 协议监听地址
+    Listen: 127.0.0.1:8010
+  # 代理服务发现时间间隔
+  ServiceDiscoveryInterval: 1h0m0s
+  # 代理服务节点均衡策略
+  Balancer: round_robin
+# 开启交互模式，提供 cli 命令查看内部信息
+Interactive: false
 ```
