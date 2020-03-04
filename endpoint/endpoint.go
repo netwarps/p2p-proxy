@@ -2,111 +2,125 @@ package endpoint
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"io"
 	"net"
 	"sync"
+	"time"
 
-	"github.com/diandianl/p2p-proxy/proxy"
+	"github.com/diandianl/p2p-proxy/config"
+	"github.com/diandianl/p2p-proxy/endpoint/balancer"
+	"github.com/diandianl/p2p-proxy/log"
+	"github.com/diandianl/p2p-proxy/p2p"
+	"github.com/diandianl/p2p-proxy/protocol"
 
-	logging "github.com/ipfs/go-log"
-	"github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p-core/discovery"
 	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/peerstore"
-	ma "github.com/multiformats/go-multiaddr"
+	p2pproto "github.com/libp2p/go-libp2p-core/protocol"
+	discovery2 "github.com/libp2p/go-libp2p-discovery"
 	"go.uber.org/multierr"
 )
 
-var log = logging.Logger("p2p-proxy")
-
 type Endpoint interface {
-
 	Start(ctx context.Context) error
 
 	Stop() error
 }
 
-func New(opts ...Option) (Endpoint, error) {
-
-	cfg := &config{}
-
-	for _, o := range opts {
-		if err := o(cfg); err != nil {
-			return nil, err
-		}
+func New(cfg *config.Config) (Endpoint, error) {
+	if err := cfg.Validate(false); err != nil {
+		return nil, err
 	}
-
-	return &endpoint{ cfg: cfg, stopping: make(chan struct{}) }, nil
+	return &endpoint{
+		logger:   log.NewSubLogger("endpoint"),
+		cfg:      cfg,
+		proxies:  make(map[peer.ID]struct{}),
+		stopping: make(chan struct{}),
+	}, nil
 }
 
 type endpoint struct {
-	cfg *config
-	// remote proxy server peer
-	dest peer.ID
-	// p2p host
-	host host.Host
-	// http(s) proxy endpoint listener
-	listener net.Listener
+	logger log.Logger
+
+	cfg *config.Config
+
+	node host.Host
+
+	discoverer discovery.Discoverer
+
+	listeners []protocol.Listener
+
+	balancer balancer.Balancer
+
+	sync.Mutex
+	proxies map[peer.ID]struct{}
 
 	stopping chan struct{}
 }
 
 func (e *endpoint) Start(ctx context.Context) (err error) {
 
-	log.Debug("Starting Endpoint")
+	c := e.cfg
 
-	opts := e.cfg.Libp2pOptions()
+	if len(c.Endpoint.ProxyProtocols) == 0 {
+		return errors.New("'Config.Endpoint.ProxyProtocols' can not be empty")
+	}
 
-	e.host, err = libp2p.New(ctx, opts...)
+	e.balancer, err = balancer.New(c.Endpoint.Balancer, e)
 	if err != nil {
 		return err
 	}
 
-	e.dest, err = addAddrToPeerstore(e.host, e.cfg.proxy)
+	e.node, e.discoverer, err = p2p.NewHostAndDiscovererAndBootstrap(ctx, c)
 	if err != nil {
 		return err
 	}
 
-	log.Info("proxy listening on ", e.cfg.listen)
-	e.listener, err = net.Listen("tcp", e.cfg.listen)
-	if err != nil {
-		return err
-	}
+	go e.syncProxies(ctx)
 
-	go func() {
-		<- ctx.Done()
-		err := e.Stop()
+	for _, p := range c.Endpoint.ProxyProtocols {
+		lsr, err := protocol.NewListener(protocol.Protocol(p.Protocol), p.Listen)
 		if err != nil {
-			log.Error("Stop Endpoint: ", err)
-		}
-	}()
-
-	for {
-		conn, err := e.listener.Accept()
-		if err != nil {
-			select{
-			case <- e.stopping:
-				return nil
-			default:
-			}
 			return err
 		}
-		go func(){
-			e.connHandler(conn)
+		e.listeners = append(e.listeners, lsr)
+
+		go func() {
+			err := e.startListener(ctx, lsr)
+			if err != nil {
+				e.logger.Errorf("start proxy listener [%s], ", lsr.Protocol(), err)
+			}
 		}()
+	}
+
+	<-ctx.Done()
+	return e.Stop()
+}
+
+func (e *endpoint) startListener(ctx context.Context, lsr protocol.Listener) error {
+	for {
+		conn, err := lsr.Accept()
+		if err != nil {
+			select {
+			case <-e.stopping:
+				return nil
+			default:
+				return err
+			}
+		}
+		go e.connHandler(ctx, lsr.Protocol(), conn)
 	}
 }
 
-func (e *endpoint) connHandler(conn net.Conn) {
-
-	log.Debug("New Conn", conn.RemoteAddr())
+func (e *endpoint) connHandler(ctx context.Context, p protocol.Protocol, conn net.Conn) {
 
 	defer conn.Close()
-	stream, err := e.host.NewStream(context.Background(), e.dest, proxy.Protocol)
+	stream, err := e.newProxyStream(ctx, p, 3)
 	// If an error happens, we write an error for response.
 	if err != nil {
-		log.Error("New Stream", err)
+		e.logger.Warn("New Stream ", err)
 		return
 	}
 	defer stream.Close()
@@ -115,23 +129,23 @@ func (e *endpoint) connHandler(conn net.Conn) {
 
 	wg.Add(2)
 
-	go func () {
+	go func() {
 		defer wg.Done()
 		_, err := io.Copy(stream, conn)
 		if err != nil {
 			conn.Close()
 			stream.Reset()
-			log.Warn("Copy stream => conn: ", err)
+			e.logger.Warn("Copy stream => conn: ", err)
 			return
 		}
 	}()
-	go func () {
+	go func() {
 		defer wg.Done()
 		_, err := io.Copy(conn, stream)
 		if err != nil {
 			conn.Close()
 			stream.Reset()
-			log.Warn("Copy conn => stream: ", err)
+			e.logger.Warn("Copy conn => stream: ", err)
 			return
 		}
 	}()
@@ -139,39 +153,93 @@ func (e *endpoint) connHandler(conn net.Conn) {
 	wg.Wait()
 }
 
-func (e *endpoint) Stop() error {
-	close(e.stopping)
-	return multierr.Combine(e.listener.Close(), e.host.Close())
+func (e *endpoint) newProxyStream(ctx context.Context, p protocol.Protocol, retry int) (network.Stream, error) {
+	proxy, err := e.balancer.Next(p)
+	if err != nil {
+		if balancer.IsNewNotEnoughProxiesError(err) && retry > 0 {
+			proxies, err := e.DiscoveryProxies(ctx)
+			if err != nil {
+				return nil, err
+			}
+			e.UpdateProxies(proxies)
+			return e.newProxyStream(ctx, p, 0)
+		}
+		return nil, err
+	}
+	s, err := e.node.NewStream(ctx, proxy, p2pproto.ID(p))
+	if err != nil {
+		e.DeleteProxy(proxy)
+		retry--
+		if retry <= 0 {
+			return nil, err
+		}
+		return e.newProxyStream(ctx, p, retry)
+	}
+	return s, nil
 }
 
-// addAddrToPeerstore parses a peer multiaddress and adds
-// it to the given host's peerstore, so it knows how to
-// contact it. It returns the peer ID of the remote peer.
-func addAddrToPeerstore(h host.Host, addr string) (peer.ID, error) {
-	// The following code extracts target's the peer ID from the
-	// given multiaddress
-	ipfsaddr, err := ma.NewMultiaddr(addr)
-	if err != nil {
-		return "", err
+func (e *endpoint) syncProxies(ctx context.Context) {
+	ticker := time.NewTicker(e.cfg.Endpoint.ServiceDiscoveryInterval)
+	for {
+		if proxies, err := e.DiscoveryProxies(ctx); err != nil {
+			e.logger.Error(err)
+		} else {
+			e.UpdateProxies(proxies)
+		}
+		select {
+		case <-ticker.C:
+		case <-ctx.Done():
+			ticker.Stop()
+			return
+		}
 	}
-	pid, err := ipfsaddr.ValueForProtocol(ma.P_IPFS)
-	if err != nil {
-		return "", err
+}
+
+func (e *endpoint) UpdateProxies(proxies []peer.ID) {
+	e.Lock()
+	defer e.Unlock()
+	for _, p := range proxies {
+		e.proxies[p] = struct{}{}
 	}
+}
 
-	peerid, err := peer.Decode(pid)
-	if err != nil {
-		return "", err
+func (e *endpoint) GetProxies(p protocol.Protocol) []peer.ID {
+	if len(e.proxies) == 0 {
+		return nil
 	}
+	e.Lock()
+	defer e.Unlock()
+	proxies := make([]peer.ID, 0, len(e.proxies))
+	for p, _ := range e.proxies {
+		proxies = append(proxies, p)
+	}
+	return proxies
+}
 
-	// Decapsulate the /ipfs/<peerID> part from the target
-	// /ip4/<a.b.c.d>/ipfs/<peer> becomes /ip4/<a.b.c.d>
-	targetPeerAddr, _ := ma.NewMultiaddr(
-		fmt.Sprintf("/ipfs/%s", peer.Encode(peerid)))
-	targetAddr := ipfsaddr.Decapsulate(targetPeerAddr)
+func (e *endpoint) DeleteProxy(id peer.ID) {
+	e.Lock()
+	defer e.Unlock()
+	delete(e.proxies, id)
+}
 
-	// We have a peer ID and a targetAddr so we add
-	// it to the peerstore so LibP2P knows how to contact it
-	h.Peerstore().AddAddr(peerid, targetAddr, peerstore.PermanentAddrTTL)
-	return peerid, nil
+func (e *endpoint) DiscoveryProxies(ctx context.Context) ([]peer.ID, error) {
+	addrs, err := discovery2.FindPeers(ctx, e.discoverer, e.cfg.ServiceTag)
+	if err != nil {
+		return nil, err
+	}
+	proxies := make([]peer.ID, 0, len(addrs))
+	for _, addr := range addrs {
+		proxies = append(proxies, addr.ID)
+	}
+	return proxies, nil
+}
+
+func (e *endpoint) Stop() error {
+	close(e.stopping)
+	errs := make([]error, 0, len(e.listeners)+1)
+	for _, lsr := range e.listeners {
+		errs = append(errs, lsr.Close())
+	}
+	errs = append(errs, e.node.Close())
+	return multierr.Combine(errs...)
 }

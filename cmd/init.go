@@ -18,6 +18,7 @@ package cmd
 import (
 	"crypto/rand"
 	"encoding/base64"
+
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -35,7 +36,7 @@ var initCmd = &cobra.Command{
 
 func initConfig(saveAs string) error {
 
-	log.Debug("Initial run or specified configuration file does not exist or reinit, perform initialization")
+	// log.Debug("Initial run or specified configuration file does not exist or reinit, perform initialization")
 
 	priv, _, err := crypto.GenerateKeyPairWithReader(crypto.RSA, 2048, rand.Reader)
 	if err != nil {
@@ -47,14 +48,15 @@ func initConfig(saveAs string) error {
 		return err
 	}
 
-	log.Debug("Generated Private Key, Using Alg: RSA, Bits: 2048")
+	// log.Debug("Generated Private Key, Using Alg: RSA, Bits: 2048")
 
 	viper.Set("Identity.PrivKey", base64.StdEncoding.EncodeToString(privKey))
 
 	addrs := map[string]interface{}{
-		"Endpoint.HTTP": "127.0.0.1:8010",
-		"Endpoint.Proxy": "/ip4/149.129.82.89/tcp/8888/ipfs/QmXwj9Uk68XTGZLQrREjQJpTLx6GWokHrGX7xrYPGcRkTn",
-		"P2P.Addr": []string{"/ip4/0.0.0.0/tcp/8888"},
+		"Endpoint.HTTP":      "127.0.0.1:8010",
+		"Endpoint.Proxy":     "/ip4/149.129.82.89/tcp/8888/ipfs/QmXwj9Uk68XTGZLQrREjQJpTLx6GWokHrGX7xrYPGcRkTn",
+		"P2P.Addr":           []string{"/ip4/0.0.0.0/tcp/8888"},
+		"P2P.BootstrapPeers": []string{"/ip4/149.129.82.89/tcp/8888/ipfs/QmXwj9Uk68XTGZLQrREjQJpTLx6GWokHrGX7xrYPGcRkTn"},
 	}
 
 	for key, def := range addrs {

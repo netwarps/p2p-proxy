@@ -18,50 +18,44 @@ package cmd
 import (
 	"context"
 	"os"
-	"path"
 
-	logging "github.com/ipfs/go-log"
-	homedir "github.com/mitchellh/go-homedir"
+	"github.com/diandianl/p2p-proxy/cmd/endpoint"
+	"github.com/diandianl/p2p-proxy/cmd/proxy"
+	"github.com/diandianl/p2p-proxy/config"
+	"github.com/diandianl/p2p-proxy/log"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
-
-var log = logging.Logger("p2p-proxy")
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute(ctx context.Context) {
 
-	cmd := newCommand(ctx)
+	viper.SetDefault("Version", config.Version)
+
+	logger := log.NewLogger()
+
+	cmd := newCommand(ctx, logger)
 
 	if err := cmd.Execute(); err != nil {
-		log.Error(err)
+		logger.Error(err)
 		os.Exit(1)
 	}
 }
 
 // new root command
-func newCommand(ctx context.Context) *cobra.Command {
+func newCommand(ctx context.Context, logger log.Logger) *cobra.Command {
 	var cfgFile string
 	var logLevel string
 
-	ep := newEndpointCmd(ctx)
+	ep := endpoint.NewEndpointCmd(ctx)
 
 	cmd := &cobra.Command{
 		Use:   "p2p-proxy",
 		Short: "A http(s) proxy based on P2P",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			lvl, err := logging.LevelFromString(logLevel)
-			if err != nil {
-				return err
-			}
-			logging.SetAllLoggers(lvl)
-
-			cfgFile, err := loadConfig(cfgFile)
-			if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-				return initConfig(cfgFile)
-			}
-			return err
+			return log.SetAllLogLevel(logLevel)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cmd.SilenceUsage = true
@@ -78,39 +72,9 @@ func newCommand(ctx context.Context) *cobra.Command {
 
 	cmd.Flags().AddFlagSet(ep.Flags())
 
-	cmd.AddCommand(initCmd)
+	// cmd.AddCommand(initCmd)
 
-	cmd.AddCommand(newProxyCmd(ctx))
+	cmd.AddCommand(proxy.NewProxyCmd(ctx))
 
 	return cmd
-}
-
-// initConfig reads in config file and ENV variables if set.
-func loadConfig(cfgFile string) (string, error) {
-	if cfgFile != "" {
-		// Use config file from the flag.
-		viper.SetConfigFile(cfgFile)
-	} else {
-		// Find home directory.
-		home, err := homedir.Dir()
-		if err != nil {
-			return cfgFile, err
-		}
-		// Search config in home directory with name ".p2p-proxy" (without extension).
-		viper.AddConfigPath(home)
-		viper.SetConfigName(".p2p-proxy")
-		viper.SetConfigType("yaml")
-
-		cfgFile = path.Join(home, ".p2p-proxy.yaml")
-	}
-
-	viper.AutomaticEnv() // read in environment variables that match
-
-	err := viper.ReadInConfig()
-	if err != nil {
-		return cfgFile, err
-	}
-	// If a config file is found, read it in.
-	log.Info("Using config file:", viper.ConfigFileUsed())
-	return cfgFile, nil
 }

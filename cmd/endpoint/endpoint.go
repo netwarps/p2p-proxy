@@ -13,66 +13,47 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package cmd
+package endpoint
 
 import (
 	"context"
-	"encoding/base64"
-	"fmt"
-	"time"
 
+	"github.com/diandianl/p2p-proxy/config"
 	"github.com/diandianl/p2p-proxy/endpoint"
-	"github.com/diandianl/p2p-proxy/p2p"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	_ "github.com/diandianl/p2p-proxy/endpoint/balancer/roundrobin"
+	_ "github.com/diandianl/p2p-proxy/protocol/listener/tcp"
 )
 
-func newEndpointCmd(ctx context.Context) *cobra.Command {
+func NewEndpointCmd(ctx context.Context) *cobra.Command {
 
 	// endpointCmd represents the endpoint command
 	var endpointCmd = &cobra.Command{
 		Use:   "endpoint",
 		Short: "endpoint command run at local for proxy agent",
-		Long: "endpoint command run at local for proxy agent",
+		Long:  "endpoint command run at local for proxy agent",
 		RunE: func(cmd *cobra.Command, args []string) error {
 
-			checkCfgs := []string{
-				"Identity.PrivKey",
-				"Endpoint.Proxy",
+			cmd.SilenceUsage = true
+
+			cfgFile := cmd.Flags().Lookup("config").Value.String()
+			cfg, err := config.LoadOrInitializeIfNotPresent(cfgFile)
+			if err != nil {
+				return err
 			}
-
-			for _, k := range checkCfgs {
-				if !viper.IsSet(k) {
-					return fmt.Errorf("Config '%s' is required", k)
-				}
+			err = cfg.Validate(false)
+			if err != nil {
+				return err
 			}
-
-			viper.SetDefault("P2P.Addr", []string{"/ip4/127.0.0.1/tcp/8888"})
-			viper.SetDefault("Endpoint.HTTP", "127.0.0.1:8010")
-
-			priv := viper.GetString("Identity.PrivKey")
-			privKey, err := base64.StdEncoding.DecodeString(priv)
+			err = cfg.SetLogLevel(cmd.Flags().Lookup("log-level").Value.String())
 			if err != nil {
 				return err
 			}
 
-			opts := []endpoint.Option {
-				endpoint.AddP2POption(p2p.Identity(privKey)),
-				endpoint.AddP2POption(p2p.Addrs(viper.GetStringSlice("P2P.Addr")...)),
-				endpoint.Listen(viper.GetString("Endpoint.HTTP")),
-				endpoint.Proxy(viper.GetString("Endpoint.Proxy")),
-			}
-
-			if viper.GetBool("P2P.BandwidthReporter.Enable") {
-				period := 10 * time.Second
-				if viper.IsSet("P2P.BandwidthReporter.Period") {
-					period = viper.GetDuration("P2P.BandwidthReporter.Period")
-				}
-				opts = append(opts, endpoint.AddP2POption(p2p.BandwidthReporter(ctx, period)))
-			}
-
-			ep, err := endpoint.New(opts...)
+			ep, err := endpoint.New(cfg)
 
 			if err != nil {
 				return err
@@ -90,4 +71,3 @@ func newEndpointCmd(ctx context.Context) *cobra.Command {
 
 	return endpointCmd
 }
-

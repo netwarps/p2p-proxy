@@ -33,7 +33,7 @@ func SetupInterruptHandler(ctx context.Context) (func(), context.Context) {
 
 	h.handle(handlerFunc, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
 
-	return func(){
+	return func() {
 		h.close()
 	}, ctx
 }

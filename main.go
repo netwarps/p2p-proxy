@@ -20,11 +20,11 @@ import (
 	"fmt"
 
 	"github.com/diandianl/p2p-proxy/cmd"
+	"github.com/diandianl/p2p-proxy/config"
 	"github.com/diandianl/p2p-proxy/signal"
-
 )
 
-const logo = `
+const banner = `
 
    ██████╗ ██████╗ ██████╗       ██████╗ ██████╗  ██████╗ ██╗  ██╗██╗   ██╗
    ██╔══██╗╚════██╗██╔══██╗      ██╔══██╗██╔══██╗██╔═══██╗╚██╗██╔╝╚██╗ ██╔╝
@@ -33,13 +33,14 @@ const logo = `
    ██║     ███████╗██║           ██║     ██║  ██║╚██████╔╝██╔╝ ██╗   ██║   
    ╚═╝     ╚══════╝╚═╝           ╚═╝     ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝   ╚═╝   
 
-               v0.0.1    A http(s) proxy based on P2P
+               %s    A http(s) proxy based on P2P
+
 
 `
 
 func main() {
 
-	fmt.Println(logo)
+	fmt.Printf(banner, config.Version)
 
 	ctx := context.Background()
 
