@@ -9,6 +9,8 @@ import (
 
 const (
 	NoProxy Proxy = ""
+
+	RoundRobin = "round_robin"
 )
 
 type Proxy = peer.ID
@@ -18,6 +20,7 @@ type Getter interface {
 }
 
 type Balancer interface {
+	Name() string
 	Next(protocol protocol.Protocol) (Proxy, error)
 }
 

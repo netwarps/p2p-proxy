@@ -42,6 +42,11 @@ type proxyServer struct {
 
 func (s *proxyServer) Start(ctx context.Context) error {
 
+	logger := s.logger
+	defer logger.Sync()
+
+	logger.Infof("Starting Proxy Server")
+
 	c := s.cfg
 
 	if len(c.Proxy.Protocols) == 0 {
@@ -60,6 +65,7 @@ func (s *proxyServer) Start(ctx context.Context) error {
 			return err
 		}
 		s.services = append(s.services, svc)
+		logger.Infof("Supporting %s service", svc.Protocol())
 		go func() {
 			err := s.startService(ctx, svc)
 			if err != nil {

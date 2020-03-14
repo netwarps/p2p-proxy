@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	err := protocol.RegisterServiceFactory(protocol.HTTPProtocol, "http", New)
+	err := protocol.RegisterServiceFactory(protocol.HTTP, "http", New)
 	if err != nil {
 		panic(err)
 	}
@@ -37,7 +37,7 @@ type goproxyService struct {
 }
 
 func (_ *goproxyService) Protocol() protocol.Protocol {
-	return protocol.HTTPProtocol
+	return protocol.HTTP
 }
 
 func (s *goproxyService) Serve(ctx context.Context, l net.Listener) error {

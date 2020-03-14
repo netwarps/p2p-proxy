@@ -17,6 +17,7 @@ package cmd
 
 import (
 	"context"
+	"github.com/diandianl/p2p-proxy/metadata"
 	"os"
 
 	"github.com/diandianl/p2p-proxy/cmd/endpoint"
@@ -32,30 +33,56 @@ import (
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute(ctx context.Context) {
 
-	viper.SetDefault("Version", config.Version)
+	viper.SetDefault("Version", metadata.Version)
 
-	logger := log.NewLogger()
-
-	cmd := newCommand(ctx, logger)
+	cmd := newCommand(ctx)
 
 	if err := cmd.Execute(); err != nil {
-		logger.Error(err)
+		log.NewLogger().Error(err)
 		os.Exit(1)
 	}
 }
 
 // new root command
-func newCommand(ctx context.Context, logger log.Logger) *cobra.Command {
+func newCommand(ctx context.Context) *cobra.Command {
 	var cfgFile string
 	var logLevel string
 
-	ep := endpoint.NewEndpointCmd(ctx)
+	var doGetCfg func(proxy bool) (*config.Config, error)
+
+	cfgGetter := func(proxy bool) (*config.Config, error) {
+		return doGetCfg(proxy)
+	}
+
+	ep := endpoint.NewEndpointCmd(ctx, cfgGetter)
 
 	cmd := &cobra.Command{
 		Use:   "p2p-proxy",
 		Short: "A http(s) proxy based on P2P",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			return log.SetAllLogLevel(logLevel)
+			cfgFile := cmd.Flags().Lookup("config").Value.String()
+			cfg, cfgFile, err := config.LoadOrInitializeIfNotPresent(cfgFile)
+			if err != nil {
+				return err
+			}
+
+			doGetCfg = func(proxy bool) (c *config.Config, err error) {
+				err = cfg.Validate(proxy)
+				if err != nil {
+					return nil, err
+				}
+				err = cfg.SetupLogging(logLevel)
+				if err != nil {
+					return nil, err
+				}
+				logger := log.NewLogger()
+				if err = logger.Sync(); err != nil {
+					logger.Warn("Sync log ", err)
+				}
+				logger.Debugf("Using config file: %s", cfgFile)
+				return cfg, nil
+			}
+			return err
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cmd.SilenceUsage = true
@@ -74,7 +101,7 @@ func newCommand(ctx context.Context, logger log.Logger) *cobra.Command {
 
 	// cmd.AddCommand(initCmd)
 
-	cmd.AddCommand(proxy.NewProxyCmd(ctx))
+	cmd.AddCommand(proxy.NewProxyCmd(ctx, cfgGetter))
 
 	return cmd
 }

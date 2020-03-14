@@ -3,7 +3,6 @@ package p2p
 import (
 	"context"
 	"fmt"
-	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
 	"sync"
 
 	"github.com/diandianl/p2p-proxy/config"
@@ -24,6 +23,7 @@ import (
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	dhtopts "github.com/libp2p/go-libp2p-kad-dht/opts"
 	secio "github.com/libp2p/go-libp2p-secio"
+	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
 	maddr "github.com/multiformats/go-multiaddr"
 	mh "github.com/multiformats/go-multihash"
 	"github.com/urfave/cli/v2"
@@ -32,12 +32,12 @@ import (
 func NewHostAndDiscovererAndBootstrap(ctx context.Context, cfg *config.Config) (h host.Host, dis discovery.Discovery, err error) {
 	logger := log.NewSubLogger("p2p")
 
-	hostOpts, err := cfg.HostOptions()
+	hostOpts, err := hostOptions(ctx, cfg)
 	if err != nil {
 		return
 	}
 
-	dhtOpts, err := cfg.DHTOptions()
+	dhtOpts, err := dhtOptions(cfg)
 	if err != nil {
 		return
 	}
@@ -46,6 +46,11 @@ func NewHostAndDiscovererAndBootstrap(ctx context.Context, cfg *config.Config) (
 
 	if len(cfg.P2P.BootstrapPeers) > 0 {
 		bootPeers, err = convertToMAddr(cfg.P2P.BootstrapPeers)
+		if err != nil {
+			return
+		}
+	} else if len(config.Default.P2P.BootstrapPeers) > 0 {
+		bootPeers, err = convertToMAddr(config.Default.P2P.BootstrapPeers)
 		if err != nil {
 			return
 		}
@@ -60,11 +65,13 @@ func NewHostAndDiscovererAndBootstrap(ctx context.Context, cfg *config.Config) (
 
 	if cfg.P2P.Identity.ObservedAddrActivationThresh > 0 {
 		identify.ActivationThresh = cfg.P2P.Identity.ObservedAddrActivationThresh
+		logger.Debugf("Override LibP2P observed address activation thresh with %d", identify.ActivationThresh)
 	}
 
 	dhtCreater := newDHTConstructor(ctx, dhtOpts)
 
 	if cfg.P2P.EnableAutoRelay {
+		logger.Debugf("Enable auto relay")
 		hostOpts = append(hostOpts,
 			libp2p.Routing(func(h host.Host) (routing routing.PeerRouting, err error) {
 				return dhtCreater(h)
@@ -74,8 +81,16 @@ func NewHostAndDiscovererAndBootstrap(ctx context.Context, cfg *config.Config) (
 	}
 
 	h, err = libp2p.New(ctx, hostOpts...)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if len(h.Addrs()) > 0 {
+		logger.Infof("P2P [/ipfs/%s] working addrs: %s", h.ID().Pretty(), h.Addrs())
+	}
 
 	if cfg.P2P.AutoNATService {
+		logger.Debugf("Enable auto NAT service")
 		_, err = autonat.NewAutoNATService(ctx, h,
 			libp2p.Security(secio.ID, secio.New),
 			libp2p.DefaultTransports,
@@ -123,6 +138,7 @@ func NewHostAndDiscovererAndBootstrap(ctx context.Context, cfg *config.Config) (
 	dis = discovery2.NewRoutingDiscovery(router)
 
 	if cfg.Interactive {
+		logger.Debug("Enable interactive mode")
 		xcli.IPFS_PEERS = connected
 		xcli.RunP2PNodeCLI(&xcli.P2PNode{
 			Host: h,

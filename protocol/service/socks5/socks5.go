@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	err := protocol.RegisterServiceFactory(protocol.Socks5Protocol, "socks5", New)
+	err := protocol.RegisterServiceFactory(protocol.Socks5, "socks5", New)
 	if err != nil {
 		panic(err)
 	}
@@ -33,22 +33,25 @@ type socks5Service struct {
 	delegate *socks5.Server
 
 	listener net.Listener
+
+	shuttingDown bool
 }
 
 func (_ *socks5Service) Protocol() protocol.Protocol {
-	return protocol.Socks5Protocol
+	return protocol.Socks5
 }
 
 func (s *socks5Service) Serve(ctx context.Context, l net.Listener) error {
 	s.listener = l
 	err := s.delegate.Serve(l)
-	if err == context.Canceled {
-		return nil
+	if s.shuttingDown {
+		err = nil
 	}
 	return err
 }
 
 func (s *socks5Service) Shutdown(ctx context.Context) error {
+	s.shuttingDown = true
 	if s.listener != nil {
 		return s.listener.Close()
 	}

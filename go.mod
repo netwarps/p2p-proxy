@@ -22,6 +22,7 @@ require (
 	github.com/multiformats/go-multihash v0.0.13
 	github.com/onsi/ginkgo v1.11.0 // indirect
 	github.com/onsi/gomega v1.8.1 // indirect
+	github.com/shadowsocks/go-shadowsocks2 v0.1.0
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/viper v1.6.2
 	github.com/urfave/cli/v2 v2.1.1

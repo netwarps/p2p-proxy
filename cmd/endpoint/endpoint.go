@@ -28,7 +28,7 @@ import (
 	_ "github.com/diandianl/p2p-proxy/protocol/listener/tcp"
 )
 
-func NewEndpointCmd(ctx context.Context) *cobra.Command {
+func NewEndpointCmd(ctx context.Context, cfgGetter func(proxy bool) (*config.Config, error)) *cobra.Command {
 
 	// endpointCmd represents the endpoint command
 	var endpointCmd = &cobra.Command{
@@ -38,17 +38,7 @@ func NewEndpointCmd(ctx context.Context) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			cmd.SilenceUsage = true
-
-			cfgFile := cmd.Flags().Lookup("config").Value.String()
-			cfg, err := config.LoadOrInitializeIfNotPresent(cfgFile)
-			if err != nil {
-				return err
-			}
-			err = cfg.Validate(false)
-			if err != nil {
-				return err
-			}
-			err = cfg.SetLogLevel(cmd.Flags().Lookup("log-level").Value.String())
+			cfg, err := cfgGetter(false)
 			if err != nil {
 				return err
 			}

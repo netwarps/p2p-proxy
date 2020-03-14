@@ -17,30 +17,15 @@ package main
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/diandianl/p2p-proxy/cmd"
-	"github.com/diandianl/p2p-proxy/config"
+	"github.com/diandianl/p2p-proxy/metadata"
 	"github.com/diandianl/p2p-proxy/signal"
 )
 
-const banner = `
-
-   ██████╗ ██████╗ ██████╗       ██████╗ ██████╗  ██████╗ ██╗  ██╗██╗   ██╗
-   ██╔══██╗╚════██╗██╔══██╗      ██╔══██╗██╔══██╗██╔═══██╗╚██╗██╔╝╚██╗ ██╔╝
-   ██████╔╝ █████╔╝██████╔╝█████╗██████╔╝██████╔╝██║   ██║ ╚███╔╝  ╚████╔╝ 
-   ██╔═══╝ ██╔═══╝ ██╔═══╝ ╚════╝██╔═══╝ ██╔══██╗██║   ██║ ██╔██╗   ╚██╔╝  
-   ██║     ███████╗██║           ██║     ██║  ██║╚██████╔╝██╔╝ ██╗   ██║   
-   ╚═╝     ╚══════╝╚═╝           ╚═╝     ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝   ╚═╝   
-
-               %s    A http(s) proxy based on P2P
-
-
-`
-
 func main() {
 
-	fmt.Printf(banner, config.Version)
+	metadata.PrintBanner()
 
 	ctx := context.Background()
 

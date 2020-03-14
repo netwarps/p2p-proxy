@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	err := balancer.RegisterBalancerFactory("round_robin", New)
+	err := balancer.RegisterBalancerFactory(balancer.RoundRobin, New)
 	if err != nil {
 		panic(err)
 	}
@@ -21,6 +21,10 @@ func New(getter balancer.Getter) (balancer.Balancer, error) {
 type roundrobin struct {
 	balancer.Getter
 	counter atomic.Uint32
+}
+
+func (rr *roundrobin) Name() string {
+	return balancer.RoundRobin
 }
 
 func (rr *roundrobin) Next(p protocol.Protocol) (balancer.Proxy, error) {

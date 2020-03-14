@@ -81,9 +81,12 @@ proxy listening on  127.0.0.1:8010
 # 配置版本
 Version: v0.0.2
 # 配置日志级别
-LogLevel: 
-  all: info
-  p2p-proxy: debug
+Logging: 
+  File: ~/p2p-proxy.log
+  Format: console
+  Level:
+    all: info
+    p2p-proxy: debug
 # 在dht网络暴露/查找服务的标签
 ServiceTag: p2p-proxy/0.0.1
 # p2p 网络配置

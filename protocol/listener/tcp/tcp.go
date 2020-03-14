@@ -7,13 +7,19 @@ import (
 )
 
 func init() {
-	err := protocol.RegisterListenerFactory(NewFactory(protocol.HTTPProtocol, "http"))
-	if err != nil {
-		panic(err)
+	protos := []struct {
+		protocol protocol.Protocol
+		short    string
+	}{
+		{protocol.HTTP, "http"},
+		{protocol.Socks5, "socks5"},
+		{protocol.Shadowsocks, "shadowsocks"},
 	}
-	err = protocol.RegisterListenerFactory(NewFactory(protocol.Socks5Protocol, "socks5"))
-	if err != nil {
-		panic(err)
+	for _, proto := range protos {
+		err := protocol.RegisterListenerFactory(NewFactory(proto.protocol, proto.short))
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 

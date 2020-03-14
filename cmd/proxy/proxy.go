@@ -24,30 +24,23 @@ import (
 	"github.com/spf13/cobra"
 
 	_ "github.com/diandianl/p2p-proxy/protocol/service/http"
+	_ "github.com/diandianl/p2p-proxy/protocol/service/shadowsocks"
 	_ "github.com/diandianl/p2p-proxy/protocol/service/socks5"
 )
 
 // proxyCmd represents the proxy command
-func NewProxyCmd(ctx context.Context) *cobra.Command {
+func NewProxyCmd(ctx context.Context, cfgGetter func(proxy bool) (*config.Config, error)) *cobra.Command {
 	var proxyCmd = &cobra.Command{
 		Use:   "proxy",
 		Short: "Start a proxy server peer",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cmd.SilenceUsage = true
 
-			cfgFile := cmd.Flags().Lookup("config").Value.String()
-			cfg, err := config.LoadOrInitializeIfNotPresent(cfgFile)
+			cfg, err := cfgGetter(true)
 			if err != nil {
 				return err
 			}
-			err = cfg.Validate(true)
-			if err != nil {
-				return err
-			}
-			err = cfg.SetLogLevel(cmd.Flags().Lookup("log-level").Value.String())
-			if err != nil {
-				return err
-			}
+
 			proxyService, err := proxy.New(cfg)
 			if err != nil {
 				return err

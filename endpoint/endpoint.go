@@ -3,7 +3,6 @@ package endpoint
 import (
 	"context"
 	"errors"
-	"io"
 	"net"
 	"sync"
 	"time"
@@ -13,6 +12,7 @@ import (
 	"github.com/diandianl/p2p-proxy/log"
 	"github.com/diandianl/p2p-proxy/p2p"
 	"github.com/diandianl/p2p-proxy/protocol"
+	"github.com/diandianl/p2p-proxy/relay"
 
 	"github.com/libp2p/go-libp2p-core/discovery"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -62,6 +62,11 @@ type endpoint struct {
 
 func (e *endpoint) Start(ctx context.Context) (err error) {
 
+	logger := e.logger
+	defer logger.Sync()
+
+	logger.Info("Starting Endpoint")
+
 	c := e.cfg
 
 	if len(c.Endpoint.ProxyProtocols) == 0 {
@@ -72,6 +77,8 @@ func (e *endpoint) Start(ctx context.Context) (err error) {
 	if err != nil {
 		return err
 	}
+
+	logger.Debugf("Endpoint using '%s' balancer", e.balancer.Name())
 
 	e.node, e.discoverer, err = p2p.NewHostAndDiscovererAndBootstrap(ctx, c)
 	if err != nil {
@@ -85,6 +92,7 @@ func (e *endpoint) Start(ctx context.Context) (err error) {
 		if err != nil {
 			return err
 		}
+		logger.Infof("Enable %s service, listen at: %s", lsr.Protocol(), p.Listen)
 		e.listeners = append(e.listeners, lsr)
 
 		go func() {
@@ -103,54 +111,42 @@ func (e *endpoint) startListener(ctx context.Context, lsr protocol.Listener) err
 	for {
 		conn, err := lsr.Accept()
 		if err != nil {
-			select {
-			case <-e.stopping:
-				return nil
-			default:
-				return err
-			}
+			return e.errorTriggeredByStop(err)
 		}
 		go e.connHandler(ctx, lsr.Protocol(), conn)
 	}
 }
 
 func (e *endpoint) connHandler(ctx context.Context, p protocol.Protocol, conn net.Conn) {
-
-	defer conn.Close()
 	stream, err := e.newProxyStream(ctx, p, 3)
 	// If an error happens, we write an error for response.
 	if err != nil {
-		e.logger.Warn("New Stream ", err)
+		if e.errorTriggeredByStop(err) != nil {
+			e.logger.Warn("New stream ", err)
+		}
 		return
 	}
-	defer stream.Close()
+	if err := relay.CloseAfterRelay(conn, stream); e.errorTriggeredByStop(err) != nil {
+		e.logger.Warn("Relay failure: ", err)
+	}
+}
 
-	var wg sync.WaitGroup
+func (e *endpoint) isStopping() bool {
+	select {
+	case <-e.stopping:
+		return true
+	default:
+		return false
+	}
+}
 
-	wg.Add(2)
-
-	go func() {
-		defer wg.Done()
-		_, err := io.Copy(stream, conn)
-		if err != nil {
-			conn.Close()
-			stream.Reset()
-			e.logger.Warn("Copy stream => conn: ", err)
-			return
-		}
-	}()
-	go func() {
-		defer wg.Done()
-		_, err := io.Copy(conn, stream)
-		if err != nil {
-			conn.Close()
-			stream.Reset()
-			e.logger.Warn("Copy conn => stream: ", err)
-			return
-		}
-	}()
-
-	wg.Wait()
+func (e *endpoint) errorTriggeredByStop(err error) error {
+	select {
+	case <-e.stopping:
+		return nil
+	default:
+		return err
+	}
 }
 
 func (e *endpoint) newProxyStream(ctx context.Context, p protocol.Protocol, retry int) (network.Stream, error) {

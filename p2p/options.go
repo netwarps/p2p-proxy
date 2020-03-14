@@ -1,4 +1,4 @@
-package config
+package p2p
 
 import (
 	"context"
@@ -6,36 +6,42 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/diandianl/p2p-proxy/config"
 	"github.com/diandianl/p2p-proxy/log"
+
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/metrics"
 	dhtopts "github.com/libp2p/go-libp2p-kad-dht/opts"
 )
 
-func (c *Config) HostOptions() (opts []libp2p.Option, err error) {
-	if !c.valid {
-		return nil, InvalidErr
-	}
+func hostOptions(ctx context.Context, c *config.Config) (opts []libp2p.Option, err error) {
 	var opt libp2p.Option
 	if opt, err = identity(c.P2P.Identity.PrivKey); err != nil {
 		return
 	}
 	opts = append(opts, opt)
 
-	if opt, err = listenAddrs(c.P2P.Addrs...); err != nil {
-		return
+	if !(c.Work4Proxy() || c.P2P.AutoNATService || c.P2P.EnableAutoRelay) {
+		opts = append(opts, libp2p.NoListenAddrs)
+	} else {
+		if opt, err = listenAddrs(c.P2P.Addrs...); err != nil {
+			return
+		}
+		opts = append(opts, opt)
 	}
-	opts = append(opts, opt)
 
+	if c.P2P.BandWidthReporter.Enable {
+		if opt, err = BandwidthReporter(ctx, c.P2P.BandWidthReporter.Interval); err != nil {
+			return
+		}
+		opts = append(opts, opt)
+	}
 	return
 }
 
-func (c *Config) DHTOptions() ([]dhtopts.Option, error) {
-	if !c.valid {
-		return nil, InvalidErr
-	}
-	return nil, nil
+func dhtOptions(c *config.Config) ([]dhtopts.Option, error) {
+	return []dhtopts.Option{dhtopts.Client(c.P2P.DHT.Client)}, nil
 }
 
 func identity(privKey string) (libp2p.Option, error) {
