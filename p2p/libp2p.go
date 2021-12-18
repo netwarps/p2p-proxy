@@ -42,7 +42,7 @@ func NewHostAndDiscovererAndBootstrap(ctx context.Context, cfg *config.Config) (
 		return
 	}
 
-	bootPeers := dht.DefaultBootstrapPeers
+	var bootPeers []maddr.Multiaddr // dht.DefaultBootstrapPeers
 
 	if len(cfg.P2P.BootstrapPeers) > 0 {
 		bootPeers, err = convertToMAddr(cfg.P2P.BootstrapPeers)

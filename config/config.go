@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -143,6 +144,11 @@ func LoadOrInitializeIfNotPresent(configPath string) (cfg *Config, cfgFile strin
 func Initialize(cfgPath string) (*Config, error) {
 	var cfg Config = *Default
 
+	if runtime.GOOS == "windows" {
+		// FIXME  zap log output file, using url.Parse to parse file path, not work on windows
+		cfg.Logging.File = ""
+	}
+
 	priv, _, err := crypto.GenerateKeyPairWithReader(crypto.RSA, 2048, rand.Reader)
 	if err != nil {
 		return nil, err
@@ -153,8 +159,6 @@ func Initialize(cfgPath string) (*Config, error) {
 		return nil, err
 	}
 	cfg.P2P.Identity.PrivKey = base64.StdEncoding.EncodeToString(privKey)
-
-	fmt.Println(len(Default.P2P.Identity.PrivKey))
 
 	return writeConfig(cfgPath, &cfg)
 }

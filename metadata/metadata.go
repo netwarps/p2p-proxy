@@ -2,7 +2,7 @@ package metadata
 
 import "fmt"
 
-var Version = "v0.0.1"
+var Version = "dev-build"
 
 var CommitSHA = "commit"
 
