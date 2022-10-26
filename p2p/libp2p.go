@@ -11,7 +11,7 @@ import (
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	dssync "github.com/ipfs/go-datastore/sync"
-	"github.com/kingwel-xie/xcli"
+	// "github.com/kingwel-xie/xcli"
 	"github.com/libp2p/go-libp2p"
 	autonat "github.com/libp2p/go-libp2p-autonat-svc"
 	"github.com/libp2p/go-libp2p-core/discovery"
@@ -137,17 +137,6 @@ func NewHostAndDiscovererAndBootstrap(ctx context.Context, cfg *config.Config) (
 
 	dis = discovery2.NewRoutingDiscovery(router)
 
-	if cfg.Interactive {
-		logger.Debug("Enable interactive mode")
-		xcli.IPFS_PEERS = connected
-		xcli.RunP2PNodeCLI(&xcli.P2PNode{
-			Host: h,
-			Dht:  router.(*dht.IpfsDHT),
-			Ds:   dhtDs,
-		},
-			extCmds(),
-		)
-	}
 	return h, dis, nil
 }
 

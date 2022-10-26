@@ -23,7 +23,7 @@ func init() {
 func New(logger log.Logger, cfg map[string]interface{}) (protocol.Service, error) {
 
 	var (
-		ciper    = "AES-128-CFB"
+		ciper    = "AES-128-GCM"
 		password = "123456"
 	)
 
@@ -34,6 +34,7 @@ func New(logger log.Logger, cfg map[string]interface{}) (protocol.Service, error
 		password = p.(string)
 	}
 
+	logger.Infof("New shadowsocks with ciper: %s", ciper)
 	cip, err := sscore.PickCipher(ciper, nil, password)
 
 	if err != nil {
