@@ -12,7 +12,6 @@ func init() {
 		short    string
 	}{
 		{protocol.HTTP, "http"},
-		{protocol.Socks5, "socks5"},
 		{protocol.Shadowsocks, "shadowsocks"},
 	}
 	for _, proto := range protos {

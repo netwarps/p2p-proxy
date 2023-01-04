@@ -4,33 +4,18 @@ import (
 	"context"
 	"errors"
 
+	gostream "github.com/libp2p/go-libp2p-gostream"
+	"github.com/libp2p/go-libp2p/core/host"
+	p2pproto "github.com/libp2p/go-libp2p/core/protocol"
+	"go.uber.org/multierr"
+
 	cfg "github.com/diandianl/p2p-proxy/config"
 	"github.com/diandianl/p2p-proxy/log"
 	"github.com/diandianl/p2p-proxy/p2p"
 	"github.com/diandianl/p2p-proxy/protocol"
-
-	"github.com/libp2p/go-libp2p-core/discovery"
-	"github.com/libp2p/go-libp2p-core/host"
-	p2pproto "github.com/libp2p/go-libp2p-core/protocol"
-	discovery2 "github.com/libp2p/go-libp2p-discovery"
-	gostream "github.com/libp2p/go-libp2p-gostream"
-	"go.uber.org/multierr"
 )
 
-type ProxyServer interface {
-	Start(ctx context.Context) error
-
-	Stop() error
-}
-
-func New(cfg *cfg.Config) (ProxyServer, error) {
-	if err := cfg.Validate(true); err != nil {
-		return nil, err
-	}
-	return &proxyServer{logger: log.NewSubLogger("proxy"), cfg: cfg}, nil
-}
-
-type proxyServer struct {
+type Server struct {
 	logger log.Logger
 
 	cfg *cfg.Config
@@ -40,7 +25,14 @@ type proxyServer struct {
 	services []protocol.Service
 }
 
-func (s *proxyServer) Start(ctx context.Context) error {
+func New(cfg *cfg.Config) (*Server, error) {
+	if err := cfg.Validate(true); err != nil {
+		return nil, err
+	}
+	return &Server{logger: log.NewSubLogger("proxy"), cfg: cfg}, nil
+}
+
+func (s *Server) Start(ctx context.Context) error {
 
 	logger := s.logger
 	defer logger.Sync()
@@ -53,10 +45,11 @@ func (s *proxyServer) Start(ctx context.Context) error {
 		return errors.New("'Config.Proxy.Protocols' can not be empty")
 	}
 
-	h, rd, err := p2p.NewHostAndDiscovererAndBootstrap(ctx, c)
+	h, err := p2p.NewHost(ctx, c)
 	if err != nil {
 		return err
 	}
+
 	s.node = h
 
 	for _, proto := range c.Proxy.Protocols {
@@ -74,13 +67,11 @@ func (s *proxyServer) Start(ctx context.Context) error {
 		}()
 	}
 
-	discovery2.Advertise(ctx, rd, c.ServiceTag, discovery.TTL(c.Proxy.ServiceAdvertiseInterval))
-
 	<-ctx.Done()
 	return s.Stop()
 }
 
-func (s *proxyServer) startService(ctx context.Context, svc protocol.Service) error {
+func (s *Server) startService(ctx context.Context, svc protocol.Service) error {
 	l, err := gostream.Listen(s.node, p2pproto.ID(svc.Protocol()))
 	if err != nil {
 		return err
@@ -88,7 +79,7 @@ func (s *proxyServer) startService(ctx context.Context, svc protocol.Service) er
 	return svc.Serve(ctx, l)
 }
 
-func (s *proxyServer) Stop() error {
+func (s *Server) Stop() error {
 	ctx := context.Background()
 	errs := make([]error, 0, len(s.services)+1)
 	for _, svc := range s.services {

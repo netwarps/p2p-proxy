@@ -3,8 +3,9 @@ package balancer
 import (
 	"fmt"
 
+	"github.com/libp2p/go-libp2p/core/peer"
+
 	"github.com/diandianl/p2p-proxy/protocol"
-	"github.com/libp2p/go-libp2p-core/peer"
 )
 
 const (

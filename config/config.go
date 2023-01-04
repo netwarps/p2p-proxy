@@ -15,14 +15,14 @@ import (
 	"github.com/diandianl/p2p-proxy/log"
 	"github.com/diandianl/p2p-proxy/metadata"
 
-	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
 )
 
 const (
-	DefaultConfigPath = "~/.p2p-proxy.yaml"
+	DefaultConfigPath = "~/p2p-proxy.yaml"
 )
 
 var InvalidErr = errors.New("config invalid or not checked")
@@ -36,13 +36,13 @@ func init() {
 var Default = &Config{
 	P2P: P2P{
 		Addrs: []string{
-			"/ip4/0.0.0.0/tcp/8888",
+			"/ip4/0.0.0.0/udp/8888/quic",
 		},
 		BootstrapPeers: []string{},
 	},
 	Logging: Logging{
 		File:   "~/p2p-proxy.log",
-		Format: "console",
+		Format: "color",
 		Level: map[string]string{
 			"all": "info",
 		},
@@ -52,15 +52,11 @@ var Default = &Config{
 	Proxy: Proxy{
 		Protocols: []Protocol{
 			{
-				Protocol: "/p2p-proxy/http/0.0.1",
+				Protocol: "/p2p-proxy/http/0.1.0",
 				Config:   map[string]interface{}{},
 			},
 			{
-				Protocol: "/p2p-proxy/shadowsocks/0.0.1",
-				Config:   map[string]interface{}{},
-			},
-			{
-				Protocol: "/p2p-proxy/socks5/0.0.1",
+				Protocol: "/p2p-proxy/shadowsocks/0.1.0",
 				Config:   map[string]interface{}{},
 			},
 		},
@@ -69,20 +65,14 @@ var Default = &Config{
 	Endpoint: Endpoint{
 		ProxyProtocols: []ProxyProtocol{
 			{
-				Protocol: "/p2p-proxy/http/0.0.1",
+				Protocol: "/p2p-proxy/http/0.1.0",
 				Listen:   "127.0.0.1:8010",
 			},
 			{
-				Protocol: "/p2p-proxy/shadowsocks/0.0.1",
+				Protocol: "/p2p-proxy/shadowsocks/0.1.0",
 				Listen:   "127.0.0.1:8020",
 			},
-			{
-				Protocol: "/p2p-proxy/socks5/0.0.1",
-				Listen:   "127.0.0.1:8030",
-			},
 		},
-
-		ServiceDiscoveryInterval: time.Hour,
 
 		Balancer: "round_robin",
 	},
@@ -269,12 +259,6 @@ type P2P struct {
 	BootstrapPeers []string `yaml:"BootstrapPeers"`
 
 	BandWidthReporter BandWidthReporter `yaml:"BandWidthReporter"`
-
-	EnableAutoRelay bool `yaml:"EnableAutoRelay"`
-
-	AutoNATService bool `yaml:"AutoNATService"`
-
-	DHT DHT `yaml:"DHT"`
 }
 
 type Proxy struct {
@@ -285,8 +269,6 @@ type Proxy struct {
 
 type Endpoint struct {
 	ProxyProtocols []ProxyProtocol `yaml:"ProxyProtocols"`
-
-	ServiceDiscoveryInterval time.Duration `yaml:"ServiceDiscoveryInterval"`
 
 	Balancer string `yaml:"Balancer"`
 }
@@ -301,10 +283,6 @@ type BandWidthReporter struct {
 	Enable bool `yaml:"Enable"`
 
 	Interval time.Duration `yaml:"Interval"`
-}
-
-type DHT struct {
-	Client bool `yaml:"Client"`
 }
 
 type ProxyProtocol struct {

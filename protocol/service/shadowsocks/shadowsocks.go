@@ -22,6 +22,8 @@ func init() {
 
 func New(logger log.Logger, cfg map[string]interface{}) (protocol.Service, error) {
 
+	logger.Infof("Construct [%s] protocol service with config: %v", protocol.Shadowsocks, cfg)
+
 	var (
 		ciper    = "AES-128-GCM"
 		password = "123456"

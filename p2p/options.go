@@ -6,13 +6,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/metrics"
+
 	"github.com/diandianl/p2p-proxy/config"
 	"github.com/diandianl/p2p-proxy/log"
-
-	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/metrics"
-	dhtopts "github.com/libp2p/go-libp2p-kad-dht/opts"
 )
 
 func hostOptions(ctx context.Context, c *config.Config) (opts []libp2p.Option, err error) {
@@ -22,7 +21,7 @@ func hostOptions(ctx context.Context, c *config.Config) (opts []libp2p.Option, e
 	}
 	opts = append(opts, opt)
 
-	if !(c.Work4Proxy() || c.P2P.AutoNATService || c.P2P.EnableAutoRelay) {
+	if !(c.Work4Proxy()) {
 		opts = append(opts, libp2p.NoListenAddrs)
 	} else {
 		if opt, err = listenAddrs(c.P2P.Addrs...); err != nil {
@@ -38,10 +37,6 @@ func hostOptions(ctx context.Context, c *config.Config) (opts []libp2p.Option, e
 		opts = append(opts, opt)
 	}
 	return
-}
-
-func dhtOptions(c *config.Config) ([]dhtopts.Option, error) {
-	return []dhtopts.Option{dhtopts.Client(c.P2P.DHT.Client)}, nil
 }
 
 func identity(privKey string) (libp2p.Option, error) {

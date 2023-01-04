@@ -3,8 +3,6 @@ package log
 import (
 	"fmt"
 	"github.com/ipfs/go-log/v2"
-	"os"
-	"path/filepath"
 )
 
 const LogSystem = "p2p-proxy"
@@ -31,34 +29,24 @@ func SetLogLevel(name, level string) error {
 }
 
 func SetupLogging(file string, format string, level string) error {
-
-	envs := []struct {
-		key string
-		val string
-	}{
-		{"GOLOG_LOG_FMT", format},
-		{"GOLOG_FILE", file},
-		{"GOLOG_LOG_LEVEL", level},
+	_, err := log.LevelFromString(level)
+	if err != nil {
+		return err
 	}
 
-	setup := false
-	for _, e := range envs {
-		if len(e.val) > 0 {
-			setup = true
-			err := os.Setenv(e.key, e.val)
-			if err != nil {
-				return err
-			}
-		}
+	cfg := log.Config{
+		Format: log.ColorizedOutput,
+		//File:   file,
+		Level:  log.LevelInfo,
+		Stdout: true,
 	}
-	if len(file) > 0 {
-		err := os.MkdirAll(filepath.Dir(file), 0755)
-		if err != nil {
-			return err
-		}
+	switch format {
+	case "nocolor":
+		cfg.Format = log.PlaintextOutput
+	case "json":
+		cfg.Format = log.JSONOutput
 	}
-	if setup {
-		log.SetupLogging()
-	}
+
+	log.SetupLogging(cfg)
 	return nil
 }

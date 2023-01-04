@@ -13,7 +13,7 @@ MAKEFLAGS += --no-builtin-rules
 OUT_DIR ?= _output
 BIN_DIR := $(OUT_DIR)/bin
 BINARY ?= p2p-proxy
-VERSION ?= v0.0.2
+VERSION ?= v0.3.0
 COMMIT_SHA = $(shell git rev-parse --short HEAD)
 
 MODULE = $(shell go list -m)

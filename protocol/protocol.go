@@ -10,11 +10,9 @@ import (
 )
 
 const (
-	HTTP Protocol = "/p2p-proxy/http/0.0.1"
+	HTTP Protocol = "/p2p-proxy/http/0.1.0"
 
-	Socks5 Protocol = "/p2p-proxy/socks5/0.0.1"
-
-	Shadowsocks Protocol = "/p2p-proxy/shadowsocks/0.0.1"
+	Shadowsocks Protocol = "/p2p-proxy/shadowsocks/0.1.0"
 )
 
 type Protocol string

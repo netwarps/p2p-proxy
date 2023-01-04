@@ -21,8 +21,6 @@ func init() {
 func New(logger log.Logger, cfg map[string]interface{}) (protocol.Service, error) {
 	proxy := goproxy.NewProxyHttpServer()
 
-	// TODO process cfg
-
 	setLogger(proxy, logger)
 
 	return &goproxyService{logger: logger, srv: &http.Server{Handler: proxy}, delegate: proxy}, nil

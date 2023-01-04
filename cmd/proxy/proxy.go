@@ -18,14 +18,13 @@ package proxy
 import (
 	"context"
 
+	"github.com/spf13/cobra"
+
 	"github.com/diandianl/p2p-proxy/config"
 	"github.com/diandianl/p2p-proxy/proxy"
 
-	"github.com/spf13/cobra"
-
 	_ "github.com/diandianl/p2p-proxy/protocol/service/http"
 	_ "github.com/diandianl/p2p-proxy/protocol/service/shadowsocks"
-	_ "github.com/diandianl/p2p-proxy/protocol/service/socks5"
 )
 
 // proxyCmd represents the proxy command
