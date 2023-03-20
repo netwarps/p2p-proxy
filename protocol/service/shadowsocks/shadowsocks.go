@@ -29,10 +29,10 @@ func New(logger log.Logger, cfg map[string]interface{}) (protocol.Service, error
 		password = "123456"
 	)
 
-	if c, ok := cfg["Ciper"]; ok {
+	if c, ok := cfg["ciper"]; ok {
 		ciper = c.(string)
 	}
-	if p, ok := cfg["Password"]; ok {
+	if p, ok := cfg["password"]; ok {
 		password = p.(string)
 	}
 
