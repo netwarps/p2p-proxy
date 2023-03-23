@@ -81,7 +81,7 @@ P2P:
   Addrs:
   - /ip4/0.0.0.0/udp/8888/quic
   BootstrapPeers: 
-  - /ip4/172.30.0.228/udp/8888/quic/ipfs/Qmc57rUkvVX8UxUxJDpP5uk2esjNLZKydbSKmFYjaoBf6W # 修改
+  - /ip4/XX.XX.XX.XX/udp/8888/quic/ipfs/Qmc57rUkvVX8UxUxJDpP5uk2esjNLZKydbSKmFYjaoBf6W # 修改
   BandWidthReporter:
     Enable: false
     Interval: 0s
@@ -97,5 +97,8 @@ Interactive: false
 docker run -d --name p2p-proxy-stub -p 8020:8020 -v /root/p2p-proxy-config/p2p-proxy-stub.yaml:/root/p2p-proxy.yaml registry.paradeum.com/netwarps/p2p-proxy:v0.0.1 
 ```
 ## 注意事项
+- stub下BootstrapPeers配置的peerId不能有误
 - server和stub不建议部署在境外同一台机器上,否则容易被封
+- 可以部署多台server在境外不同区域，stub可以配置多个BootstrapPeer
 - 如果在桌面电脑上使用，stub可以跑再你的桌面电脑上，可以省掉一台服务器
+- server和stub配置的P2P.Identity.PrivKey不同重复
