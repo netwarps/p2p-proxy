@@ -39,7 +39,7 @@ Proxy:
   ServiceAdvertiseInterval: 1h0m0s
 Interactive: false
 ```
-3. 运行server
+3. 启动server
 ```
 docker run -d --name p2p-proxy-server -p 8888:8888 -v /root/p2p-proxy-config/p2p-proxy-server.yaml:/root/p2p-proxy.yaml registry.paradeum.com/netwarps/p2p-proxy:v0.0.1  proxy
 ```
@@ -56,16 +56,16 @@ docker logs -f  p2p-proxy-server
 /ip4/XX.XX.XX.XX/udp/8888/quic/ipfs/Qmc57rUkvVX8UxUxJDpP5uk2esjNLZKydbSKmFYjaoBf6W
 ```
 ## 部署stub
-1. 创建配置文件目录,生成配置
+1. 创建配置文件目录并生成配置
 ```
 mkdir /root/p2p-proxy-config
 docker run --rm -it -v /root/p2p-proxy-config:/config registry.paradeum.com/netwarps/p2p-proxy:v0.0.1 -c /config/p2p-proxy-stub.yaml
 ```
 Ctrl+C终止容器, 查看/root/p2p-proxy-config目录下生成的配置文件p2p-proxy-stub.yaml
 2. 修改配置
-- 默认使用quic协议,监听端口8888
-- 修改BootstrapPeers,地址为p2p-proxy-server的peer地址(部署server的第四步)
-- 删除Proxy保留Endpoint,配置shadowsocks监听端口,默认127.0.0:8020,修改为0.0.0.0:8020
+- 默认使用quic协议，监听端口8888
+- 修改BootstrapPeers，地址为p2p-proxy-server的peer地址(部署server的第四步)
+- 删除Proxy保留Endpoint，配置shadowsocks监听端口，默认127.0.0:8020,修改为0.0.0.0:8020
 ```
 Version: dev-build
 Logging:
