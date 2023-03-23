@@ -94,7 +94,7 @@ Interactive: false
 ```
 3. 启动stub
 ```
-docker run -d --name p2p-proxy-server -p 8020:8020 -v /root/p2p-proxy-config/p2p-proxy-stub.yaml:/root/p2p-proxy.yaml registry.paradeum.com/netwarps/p2p-proxy:v0.0.1 
+docker run -d --name p2p-proxy-stub -p 8020:8020 -v /root/p2p-proxy-config/p2p-proxy-stub.yaml:/root/p2p-proxy.yaml registry.paradeum.com/netwarps/p2p-proxy:v0.0.1 
 ```
 ## 注意事项
 - server和stub不建议部署在境外同一台机器上,否则容易被封
