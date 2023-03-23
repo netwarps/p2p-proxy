@@ -67,3 +67,5 @@ $(RELEASE_PLATFORMS:%=$(OUT_DIR)/%/bin/$(BINARY)): $(GO_SOURCE_FILES)
 .PHONY: clean
 clean:
 	@rm -rf $(OUT_DIR)
+docker:
+	docker build -t registry.paradeum.com/netwarps/p2p-proxy:v0.0.1 .
